@@ -1,0 +1,11 @@
+.git
+.agentforge
+*.exe
+*.dll
+voidvpn
+docs/
+.github/
+k8s/
+*.md
+!go.mod
+!go.sum
