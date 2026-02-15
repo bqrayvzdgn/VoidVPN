@@ -34,6 +34,9 @@ test-pki/
 test-local.ovpn
 test-server.conf
 
+# Local E2E test scripts (reference test-pki/ and hardcoded paths)
+test-*.ps1
+
 # Local Claude settings
 .claude/
 
