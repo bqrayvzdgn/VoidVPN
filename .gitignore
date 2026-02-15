@@ -24,5 +24,18 @@ Thumbs.db
 dist/
 completions/
 
+# Secrets — WireGuard configs contain private keys
+VPNs/
+*.conf
+*.ovpn
+
+# Test PKI — private keys and certificates
+test-pki/
+test-local.ovpn
+test-server.conf
+
+# Local Claude settings
+.claude/
+
 # AgentForge (pipeline metadata)
 .agentforge/
