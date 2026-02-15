@@ -1,23 +1,29 @@
 # VoidVPN
 
-**A fast, secure WireGuard VPN client for the command line.**
+![Go](https://img.shields.io/badge/Go-1.22-00ADD8?logo=go&logoColor=white)
+![Coverage](https://img.shields.io/badge/coverage-59%25-yellow)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-VoidVPN is a single-binary CLI tool that manages WireGuard VPN tunnels without requiring any external tools. It embeds the WireGuard protocol directly via `wireguard-go`, provides a styled terminal interface powered by Charmbracelet, and stores private keys securely in your operating system's native keyring.
+**A fast, secure VPN client for the command line with embedded WireGuard and OpenVPN support.**
+
+VoidVPN is a single-binary CLI tool that manages VPN tunnels without requiring any external tools for WireGuard. It embeds the WireGuard protocol directly via `wireguard-go`, supports OpenVPN via the system binary, provides a styled terminal interface powered by Charmbracelet, and stores private keys securely in your operating system's native keyring.
 
 ---
 
 ## Features
 
-- **Embedded WireGuard** -- Uses `wireguard-go` directly. No `wg`, `wg-quick`, or `wireguard-tools` required.
-- **Single binary** -- One executable, zero runtime dependencies.
+- **Dual protocol** -- Embedded WireGuard via `wireguard-go` (no external tools) and OpenVPN support via system binary.
+- **Single binary** -- One executable, zero runtime dependencies for WireGuard.
 - **Cross-platform** -- Windows (primary), Linux, and macOS.
 - **Styled terminal UI** -- Branded output with Charmbracelet (lipgloss, bubbletea, bubbles). Purple/cyan dark theme.
 - **OS keyring integration** -- Private keys stored in Windows Credential Manager, macOS Keychain, or Linux secret-service.
-- **Encrypted file fallback** -- Secure key storage even without a keyring provider.
-- **WireGuard .conf import** -- Import existing WireGuard configuration files directly.
+- **Encrypted file fallback** -- AES-256-GCM encrypted key storage when no keyring is available.
+- **Config import** -- Import WireGuard `.conf` and OpenVPN `.ovpn` files directly.
 - **Kill switch** -- Optional traffic blocking if the VPN connection drops.
-- **Daemon mode** -- Run the tunnel in the background.
+- **Daemon mode** -- Run the tunnel in the background with IPC status queries.
 - **Shell completions** -- Bash, Zsh, Fish, and PowerShell.
+- **216 tests** -- 59% code coverage across all packages.
 
 ---
 
@@ -29,10 +35,14 @@ VoidVPN is a single-binary CLI tool that manages WireGuard VPN tunnels without r
 go install github.com/voidvpn/voidvpn/cmd/voidvpn@latest
 ```
 
-### Import an existing WireGuard config
+### Import an existing config
 
 ```bash
+# WireGuard
 voidvpn servers import /path/to/wg0.conf
+
+# OpenVPN
+voidvpn servers import /path/to/client.ovpn
 ```
 
 ### Connect
@@ -80,7 +90,7 @@ voidvpn disconnect
 | `voidvpn servers list` | List all configured servers. |
 | `voidvpn servers add <name>` | Add a new server configuration. |
 | `voidvpn servers remove <name>` | Remove a server configuration. |
-| `voidvpn servers import <file>` | Import a WireGuard `.conf` file. |
+| `voidvpn servers import <file>` | Import a WireGuard `.conf` or OpenVPN `.ovpn` file. |
 | `voidvpn keygen` | Generate a WireGuard keypair. |
 | `voidvpn config show` | Display current configuration. |
 | `voidvpn config set <key> <value>` | Set a configuration value. |
@@ -181,8 +191,8 @@ mtu: 1420
 ### Build
 
 ```bash
-git clone https://github.com/voidvpn/voidvpn.git
-cd voidvpn
+git clone https://github.com/bqrayvzdgn/VoidVPN.git
+cd VoidVPN
 make build
 ```
 
