@@ -22,3 +22,10 @@ func TestBannerContent(t *testing.T) {
 		t.Error("Banner() should contain tagline 'Secure. Private. Void.'")
 	}
 }
+
+func TestBannerNonEmpty(t *testing.T) {
+	b := Banner()
+	if len(b) < 10 {
+		t.Errorf("Banner() too short: %d chars", len(b))
+	}
+}

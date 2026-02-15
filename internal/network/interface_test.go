@@ -128,3 +128,50 @@ func TestPrefixToMask(t *testing.T) {
 		})
 	}
 }
+
+func TestAssignAddressValidParsing(t *testing.T) {
+	// Will fail at the platform-specific execution level, but exercises parsing
+	err := AssignAddress("test-iface", "10.0.0.1/24")
+	// We expect an error from the netsh/ip command, but parsing should succeed
+	if err == nil {
+		return // Unexpected success (maybe running as admin), still fine
+	}
+	// The error should NOT be about "empty" or "invalid" - it should be from the command
+	if strings.Contains(err.Error(), "empty") || strings.Contains(err.Error(), "invalid address") {
+		t.Errorf("parsing should have succeeded, got: %v", err)
+	}
+}
+
+func TestExtractEndpointHostEmpty(t *testing.T) {
+	result := ExtractEndpointHost("")
+	if result != "" {
+		t.Errorf("ExtractEndpointHost(\"\") = %q, want \"\"", result)
+	}
+}
+
+func TestExtractGatewayEmpty(t *testing.T) {
+	result := ExtractGateway("")
+	if result != "" {
+		t.Errorf("ExtractGateway(\"\") = %q, want \"\"", result)
+	}
+}
+
+func TestPrefixToMaskEdgeCases(t *testing.T) {
+	tests := []struct {
+		bits int
+		want string
+	}{
+		{1, "128.0.0.0"},
+		{7, "254.0.0.0"},
+		{9, "255.128.0.0"},
+		{17, "255.255.128.0"},
+		{25, "255.255.255.128"},
+		{31, "255.255.255.254"},
+	}
+	for _, tt := range tests {
+		got := prefixToMask(tt.bits)
+		if got != tt.want {
+			t.Errorf("prefixToMask(%d) = %q, want %q", tt.bits, got, tt.want)
+		}
+	}
+}

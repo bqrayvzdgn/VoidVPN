@@ -85,3 +85,89 @@ func TestAddGatewayRouteInvalidMask(t *testing.T) {
 		t.Errorf("error = %q, want mention of invalid subnet mask", err.Error())
 	}
 }
+
+func TestAddGatewayRouteInvalidGateway(t *testing.T) {
+	err := addGatewayRoute("192.168.1.0", "255.255.255.0", "not-an-ip")
+	if err == nil {
+		t.Error("expected error for invalid gateway")
+	}
+	if !strings.Contains(err.Error(), "invalid gateway") {
+		t.Errorf("error should contain 'invalid gateway': %v", err)
+	}
+}
+
+func TestSplitNoSeparator(t *testing.T) {
+	result := split("nosep", '\n')
+	if len(result) != 1 || result[0] != "nosep" {
+		t.Errorf("split() = %v, want [\"nosep\"]", result)
+	}
+}
+
+func TestSplitEmptyString(t *testing.T) {
+	result := split("", '\n')
+	if len(result) != 1 || result[0] != "" {
+		t.Errorf("split(\"\") = %v, want [\"\"]", result)
+	}
+}
+
+func TestSplitMultipleSeparators(t *testing.T) {
+	result := split("a\nb\nc", '\n')
+	if len(result) != 3 {
+		t.Errorf("split() len = %d, want 3", len(result))
+	}
+	if result[0] != "a" || result[1] != "b" || result[2] != "c" {
+		t.Errorf("split() = %v, want [a b c]", result)
+	}
+}
+
+func TestSplitConsecutiveSeparators(t *testing.T) {
+	result := split("a\n\nb", '\n')
+	if len(result) != 3 {
+		t.Errorf("split() len = %d, want 3", len(result))
+	}
+	if result[1] != "" {
+		t.Errorf("split()[1] = %q, want \"\"", result[1])
+	}
+}
+
+func TestRemoveVPNRoutesEmpty(t *testing.T) {
+	r := &windowsRoutes{}
+	err := r.RemoveVPNRoutes()
+	if err != nil {
+		t.Errorf("RemoveVPNRoutes() on empty should return nil: %v", err)
+	}
+}
+
+func TestSplitFieldsMultipleSpaces(t *testing.T) {
+	result := splitFields("  one   two   three  ")
+	if len(result) != 3 {
+		t.Errorf("splitFields() len = %d, want 3", len(result))
+	}
+	want := []string{"one", "two", "three"}
+	for i, w := range want {
+		if result[i] != w {
+			t.Errorf("splitFields()[%d] = %q, want %q", i, result[i], w)
+		}
+	}
+}
+
+func TestSplitFieldsTabs(t *testing.T) {
+	result := splitFields("foo\tbar\tbaz")
+	if len(result) != 3 {
+		t.Errorf("splitFields() len = %d, want 3", len(result))
+	}
+}
+
+func TestTrimSpaceNoWhitespace(t *testing.T) {
+	result := trimSpace("hello")
+	if result != "hello" {
+		t.Errorf("trimSpace(\"hello\") = %q, want \"hello\"", result)
+	}
+}
+
+func TestTrimSpaceAllWhitespace(t *testing.T) {
+	result := trimSpace("   \t\r\n  ")
+	if result != "" {
+		t.Errorf("trimSpace(whitespace) = %q, want \"\"", result)
+	}
+}

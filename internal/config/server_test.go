@@ -146,3 +146,90 @@ func TestDefaultServerConfig(t *testing.T) {
 		t.Errorf("default AllowedIPs count = %d, want 2", len(cfg.AllowedIPs))
 	}
 }
+
+func TestLoadServerInvalidYAML(t *testing.T) {
+	origAppdata := os.Getenv("APPDATA")
+	tmp := t.TempDir()
+	os.Setenv("APPDATA", tmp)
+	defer os.Setenv("APPDATA", origAppdata)
+
+	EnsureDirs()
+
+	// Write invalid YAML
+	serverPath := filepath.Join(ServersDir(), "bad-yaml.yaml")
+	os.WriteFile(serverPath, []byte("{{{{invalid yaml!!!!"), 0644)
+
+	_, err := LoadServer("bad-yaml")
+	if err == nil {
+		t.Error("LoadServer() should fail on invalid YAML")
+	}
+}
+
+func TestListServersEmpty(t *testing.T) {
+	origAppdata := os.Getenv("APPDATA")
+	tmp := t.TempDir()
+	os.Setenv("APPDATA", tmp)
+	defer os.Setenv("APPDATA", origAppdata)
+
+	EnsureDirs()
+
+	servers, err := ListServers()
+	if err != nil {
+		t.Fatalf("ListServers() error: %v", err)
+	}
+	if len(servers) != 0 {
+		t.Errorf("ListServers() = %d servers, want 0", len(servers))
+	}
+}
+
+func TestListServersSkipsInvalidYAML(t *testing.T) {
+	origAppdata := os.Getenv("APPDATA")
+	tmp := t.TempDir()
+	os.Setenv("APPDATA", tmp)
+	defer os.Setenv("APPDATA", origAppdata)
+
+	EnsureDirs()
+
+	// Save one valid server
+	SaveServer(&ServerConfig{Name: "valid-server", Endpoint: "1.2.3.4:51820"})
+
+	// Write one invalid YAML file
+	invalidPath := filepath.Join(ServersDir(), "invalid.yaml")
+	os.WriteFile(invalidPath, []byte("{{{{not yaml"), 0644)
+
+	servers, err := ListServers()
+	if err != nil {
+		t.Fatalf("ListServers() error: %v", err)
+	}
+	// Should have at least the valid server
+	if len(servers) < 1 {
+		t.Errorf("ListServers() = %d, want >= 1", len(servers))
+	}
+}
+
+func TestServerExistsTrue(t *testing.T) {
+	origAppdata := os.Getenv("APPDATA")
+	tmp := t.TempDir()
+	os.Setenv("APPDATA", tmp)
+	defer os.Setenv("APPDATA", origAppdata)
+
+	EnsureDirs()
+	SaveServer(&ServerConfig{Name: "existing"})
+
+	if !ServerExists("existing") {
+		t.Error("ServerExists() should return true for saved server")
+	}
+}
+
+func TestServerExistsFalse(t *testing.T) {
+	origAppdata := os.Getenv("APPDATA")
+	tmp := t.TempDir()
+	os.Setenv("APPDATA", tmp)
+	defer os.Setenv("APPDATA", origAppdata)
+
+	EnsureDirs()
+
+	if ServerExists("nonexistent") {
+		t.Error("ServerExists() should return false for missing server")
+	}
+}

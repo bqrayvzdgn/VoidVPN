@@ -205,3 +205,74 @@ func TestDeriveKeyConsistency(t *testing.T) {
 		}
 	}
 }
+
+func TestFileStoreLoadInvalidBase64(t *testing.T) {
+	cleanup := setupKeystoreEnv(t)
+	defer cleanup()
+
+	fs := &fileStore{}
+
+	// Write non-base64 content directly to key file
+	name := "badbase64"
+	kf, _ := keyFile(name)
+	os.MkdirAll(filepath.Dir(kf), 0700)
+	os.WriteFile(kf, []byte("not-valid-base64!!!"), 0600)
+
+	_, err := fs.Load(name)
+	if err == nil {
+		t.Error("Load() should fail on invalid base64 content")
+	}
+}
+
+func TestFileStoreLoadTruncatedData(t *testing.T) {
+	cleanup := setupKeystoreEnv(t)
+	defer cleanup()
+
+	fs := &fileStore{}
+
+	// Store normally first to get proper salt file
+	fs.Store("truncated", "secret")
+
+	// Now truncate the key file to just a few bytes (less than nonce size)
+	kf, _ := keyFile("truncated")
+	os.WriteFile(kf, []byte("c2hvcnQ="), 0600) // base64 of "short"
+
+	_, err := fs.Load("truncated")
+	if err == nil {
+		t.Error("Load() should fail on truncated ciphertext")
+	}
+}
+
+func TestFileStoreDeleteNonExistent(t *testing.T) {
+	cleanup := setupKeystoreEnv(t)
+	defer cleanup()
+
+	fs := &fileStore{}
+	err := fs.Delete("nonexistent-key")
+	// Should not return error for deleting non-existent key
+	if err != nil {
+		t.Errorf("Delete() non-existent should not error: %v", err)
+	}
+}
+
+func TestFileStoreExistsAfterStore(t *testing.T) {
+	cleanup := setupKeystoreEnv(t)
+	defer cleanup()
+
+	fs := &fileStore{}
+	fs.Store("exists-test", "value")
+
+	if !fs.Exists("exists-test") {
+		t.Error("Exists() should return true after Store")
+	}
+}
+
+func TestFileStoreExistsNonExistent(t *testing.T) {
+	cleanup := setupKeystoreEnv(t)
+	defer cleanup()
+
+	fs := &fileStore{}
+	if fs.Exists("does-not-exist") {
+		t.Error("Exists() should return false for non-existent key")
+	}
+}

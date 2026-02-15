@@ -1,6 +1,8 @@
 package openvpn
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -137,4 +139,60 @@ func TestNewTunnel(t *testing.T) {
 	if tun.IsActive() {
 		t.Error("tunnel should not be active before Connect()")
 	}
+}
+
+func TestNewTunnelPortRange(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		tun := NewTunnel(&config.ServerConfig{Name: "test"})
+		if tun.mgmtPort < 10000 || tun.mgmtPort >= 60000 {
+			t.Errorf("mgmtPort = %d, want [10000, 60000)", tun.mgmtPort)
+		}
+	}
+}
+
+func TestNewTunnelMgmtClient(t *testing.T) {
+	tun := NewTunnel(&config.ServerConfig{Name: "test"})
+	if tun.mgmt == nil {
+		t.Error("management client should be initialized")
+	}
+}
+
+func TestIsActiveNilCmd(t *testing.T) {
+	tun := &Tunnel{server: &config.ServerConfig{Name: "test"}}
+	if tun.IsActive() {
+		t.Error("IsActive() should be false when cmd is nil")
+	}
+}
+
+func TestIsActiveUnlockedNilCmd(t *testing.T) {
+	tun := &Tunnel{server: &config.ServerConfig{Name: "test"}}
+	if tun.IsActiveUnlocked() {
+		t.Error("IsActiveUnlocked() should be false when cmd is nil")
+	}
+}
+
+func TestCleanupTempFileRemoves(t *testing.T) {
+	tmp := t.TempDir()
+	tmpFile := filepath.Join(tmp, "test.conf")
+	os.WriteFile(tmpFile, []byte("test"), 0600)
+
+	tun := &Tunnel{
+		server:    &config.ServerConfig{Name: "test"},
+		tmpConfig: tmpFile,
+	}
+
+	tun.cleanupTempFile()
+
+	if _, err := os.Stat(tmpFile); !os.IsNotExist(err) {
+		t.Error("temp file should have been removed")
+	}
+	if tun.tmpConfig != "" {
+		t.Error("tmpConfig should be empty after cleanup")
+	}
+}
+
+func TestCleanupTempFileEmpty(t *testing.T) {
+	tun := &Tunnel{server: &config.ServerConfig{Name: "test"}}
+	// Should not panic with empty tmpConfig
+	tun.cleanupTempFile()
 }

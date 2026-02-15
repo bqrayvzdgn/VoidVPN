@@ -53,3 +53,40 @@ func TestParseAddressIPv6(t *testing.T) {
 		})
 	}
 }
+
+func TestParseAddressEmpty(t *testing.T) {
+	_, err := ParseAddress("")
+	if err == nil {
+		t.Error("expected error for empty address")
+	}
+}
+
+func TestParseAddressInvalidCIDR(t *testing.T) {
+	_, err := ParseAddress("10.0.0.1/33")
+	if err == nil {
+		t.Error("expected error for invalid CIDR /33")
+	}
+}
+
+func TestParseAddressLoopback(t *testing.T) {
+	prefix, err := ParseAddress("127.0.0.1/32")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if prefix.Addr().String() != "127.0.0.1" {
+		t.Errorf("IP = %s, want 127.0.0.1", prefix.Addr().String())
+	}
+	if prefix.Bits() != 32 {
+		t.Errorf("bits = %d, want 32", prefix.Bits())
+	}
+}
+
+func TestParseAddressAllZeros(t *testing.T) {
+	prefix, err := ParseAddress("0.0.0.0/0")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if prefix.Bits() != 0 {
+		t.Errorf("bits = %d, want 0", prefix.Bits())
+	}
+}

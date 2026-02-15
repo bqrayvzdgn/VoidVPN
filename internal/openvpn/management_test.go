@@ -1,6 +1,7 @@
 package openvpn
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"strings"
@@ -105,5 +106,109 @@ func TestSendSignal(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Error("timeout waiting for signal command")
+	}
+}
+
+func TestNewManagementClientPort(t *testing.T) {
+	tests := []struct {
+		port int
+		want string
+	}{
+		{0, "127.0.0.1:0"},
+		{65535, "127.0.0.1:65535"},
+		{12345, "127.0.0.1:12345"},
+	}
+	for _, tt := range tests {
+		mc := NewManagementClient(tt.port)
+		if mc.addr != tt.want {
+			t.Errorf("NewManagementClient(%d).addr = %q, want %q", tt.port, mc.addr, tt.want)
+		}
+	}
+}
+
+func TestGetStatsZeroBytes(t *testing.T) {
+	// Start a mock management server
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer listener.Close()
+
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.SetDeadline(time.Now().Add(3 * time.Second))
+
+		// Send greeting (required by GetStats which reads it first)
+		fmt.Fprintf(conn, ">INFO:OpenVPN Management Interface Version 1\n")
+
+		reader := bufio.NewReader(conn)
+		line, _ := reader.ReadString('\n')
+		if strings.TrimSpace(line) == "status" {
+			fmt.Fprintf(conn, "OpenVPN STATISTICS\n")
+			fmt.Fprintf(conn, "Updated,2024-01-01 00:00:00\n")
+			fmt.Fprintf(conn, "TUN/TAP read bytes,0\n")
+			fmt.Fprintf(conn, "TUN/TAP write bytes,0\n")
+			fmt.Fprintf(conn, "END\n")
+		}
+	}()
+
+	addr := listener.Addr().(*net.TCPAddr)
+	mc := NewManagementClient(addr.Port)
+	stats, err := mc.GetStats()
+	if err != nil {
+		t.Fatalf("GetStats() error: %v", err)
+	}
+	if stats.TxBytes != 0 {
+		t.Errorf("TxBytes = %d, want 0", stats.TxBytes)
+	}
+	if stats.RxBytes != 0 {
+		t.Errorf("RxBytes = %d, want 0", stats.RxBytes)
+	}
+}
+
+func TestGetStatsLargeValues(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer listener.Close()
+
+	go func() {
+		conn, err := listener.Accept()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.SetDeadline(time.Now().Add(3 * time.Second))
+
+		// Send greeting (required by GetStats which reads it first)
+		fmt.Fprintf(conn, ">INFO:OpenVPN Management Interface Version 1\n")
+
+		reader := bufio.NewReader(conn)
+		line, _ := reader.ReadString('\n')
+		if strings.TrimSpace(line) == "status" {
+			fmt.Fprintf(conn, "OpenVPN STATISTICS\n")
+			fmt.Fprintf(conn, "Updated,2024-01-01 00:00:00\n")
+			fmt.Fprintf(conn, "TUN/TAP read bytes,9999999999\n")
+			fmt.Fprintf(conn, "TUN/TAP write bytes,8888888888\n")
+			fmt.Fprintf(conn, "END\n")
+		}
+	}()
+
+	addr := listener.Addr().(*net.TCPAddr)
+	mc := NewManagementClient(addr.Port)
+	stats, err := mc.GetStats()
+	if err != nil {
+		t.Fatalf("GetStats() error: %v", err)
+	}
+	if stats.RxBytes != 9999999999 {
+		t.Errorf("RxBytes = %d, want 9999999999", stats.RxBytes)
+	}
+	if stats.TxBytes != 8888888888 {
+		t.Errorf("TxBytes = %d, want 8888888888", stats.TxBytes)
 	}
 }

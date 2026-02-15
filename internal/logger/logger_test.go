@@ -89,3 +89,49 @@ func TestResumeRestoresLogs(t *testing.T) {
 		t.Error("info should be enabled after Resume()")
 	}
 }
+
+func TestHandlePassesThrough(t *testing.T) {
+	Init("info")
+	// Use slog.Default() to trigger Handle
+	// Just verify no panic/error when logging
+	slog.Info("test message", "key", "value")
+}
+
+func TestHandlePausedDropsRecord(t *testing.T) {
+	Init("info")
+	Pause()
+	defer Resume()
+	// Should not panic even when paused
+	slog.Info("this should be dropped")
+	slog.Error("this too")
+}
+
+func TestWithAttrsReturnsPauseHandler(t *testing.T) {
+	Init("info")
+	h := slog.Default().Handler()
+	h2 := h.WithAttrs([]slog.Attr{slog.String("component", "test")})
+	if h2 == nil {
+		t.Error("WithAttrs returned nil")
+	}
+	// Should still respect pause
+	Pause()
+	defer Resume()
+	if h2.Enabled(context.Background(), slog.LevelInfo) {
+		t.Error("WithAttrs handler should respect pause")
+	}
+}
+
+func TestWithGroupReturnsPauseHandler(t *testing.T) {
+	Init("info")
+	h := slog.Default().Handler()
+	h2 := h.WithGroup("mygroup")
+	if h2 == nil {
+		t.Error("WithGroup returned nil")
+	}
+	// Should still respect pause
+	Pause()
+	defer Resume()
+	if h2.Enabled(context.Background(), slog.LevelInfo) {
+		t.Error("WithGroup handler should respect pause")
+	}
+}

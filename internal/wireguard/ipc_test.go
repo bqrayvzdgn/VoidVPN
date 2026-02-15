@@ -7,6 +7,9 @@ import (
 	"testing"
 )
 
+// validKey is a valid 32-byte base64-encoded key used across tests.
+var validKey = base64.StdEncoding.EncodeToString(make([]byte, 32))
+
 func TestBuildIPCConfig(t *testing.T) {
 	cfg := &TunnelConfig{
 		PrivateKey:          base64.StdEncoding.EncodeToString(make([]byte, 32)),
@@ -174,5 +177,77 @@ func TestBuildIPCConfigMultipleAllowedIPs(t *testing.T) {
 	count := strings.Count(result, "allowed_ip=")
 	if count != 3 {
 		t.Errorf("allowed_ip= count = %d, want 3", count)
+	}
+}
+
+func TestBuildIPCConfigEmptyPrivateKey(t *testing.T) {
+	cfg := &TunnelConfig{
+		PrivateKey:     "",
+		PeerPublicKey:  validKey,
+		PeerEndpoint:   "1.2.3.4:51820",
+		PeerAllowedIPs: []string{"0.0.0.0/0"},
+	}
+	_, err := BuildIPCConfig(cfg)
+	if err == nil {
+		t.Error("expected error for empty private key")
+	}
+}
+
+func TestBuildIPCConfigEmptyPeerPublicKey(t *testing.T) {
+	cfg := &TunnelConfig{
+		PrivateKey:     validKey,
+		PeerPublicKey:  "",
+		PeerEndpoint:   "1.2.3.4:51820",
+		PeerAllowedIPs: []string{"0.0.0.0/0"},
+	}
+	_, err := BuildIPCConfig(cfg)
+	if err == nil {
+		t.Error("expected error for empty peer public key")
+	}
+}
+
+func TestBuildIPCConfigEmptyEndpoint(t *testing.T) {
+	cfg := &TunnelConfig{
+		PrivateKey:     validKey,
+		PeerPublicKey:  validKey,
+		PeerEndpoint:   "",
+		PeerAllowedIPs: []string{"0.0.0.0/0"},
+	}
+	_, err := BuildIPCConfig(cfg)
+	if err == nil {
+		t.Error("expected error for empty endpoint")
+	}
+	if !strings.Contains(err.Error(), "endpoint is required") {
+		t.Errorf("error should mention endpoint: %v", err)
+	}
+}
+
+func TestBuildIPCConfigEmptyAllowedIPs(t *testing.T) {
+	cfg := &TunnelConfig{
+		PrivateKey:     validKey,
+		PeerPublicKey:  validKey,
+		PeerEndpoint:   "1.2.3.4:51820",
+		PeerAllowedIPs: []string{},
+	}
+	_, err := BuildIPCConfig(cfg)
+	if err == nil {
+		t.Error("expected error for empty AllowedIPs")
+	}
+	if !strings.Contains(err.Error(), "AllowedIPs is required") {
+		t.Errorf("error should mention AllowedIPs: %v", err)
+	}
+}
+
+func TestKeyToHexEmptyString(t *testing.T) {
+	_, err := keyToHex("")
+	if err == nil {
+		t.Error("expected error for empty key")
+	}
+}
+
+func TestKeyToHexInvalidBase64(t *testing.T) {
+	_, err := keyToHex("not!valid!base64!!!")
+	if err == nil {
+		t.Error("expected error for invalid base64")
 	}
 }

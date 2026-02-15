@@ -165,7 +165,11 @@ func (f *fileStore) Delete(name string) error {
 	if err != nil {
 		return err
 	}
-	return os.Remove(path)
+	err = os.Remove(path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 func (f *fileStore) Exists(name string) bool {
